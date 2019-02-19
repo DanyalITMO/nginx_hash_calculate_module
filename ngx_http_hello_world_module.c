@@ -29,15 +29,17 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-
-#define HELLO_WORLD "<!DOCTYPE html>                \
+#define make_str( bar ) # bar
+#define HELLO_WORLD(x) "<!DOCTYPE html>                \
 <html>                          \
 <head>                          \
-<title>Basic Web Page</title>                           \
+<title> \
+Basic Web Page</title>                           \
 </head>                         \
-<body>                          \
-        Hello World!                            \
-</body>                         \
+<body>"                          \
+        make_str(x) \
+                            \
+"</body>                         \
 </html>"
 
 //#define HELLO_WORLD  "hello world"
@@ -63,7 +65,7 @@ static ngx_command_t ngx_http_hello_world_commands[] = {
 };
 
 /* The hello world string. */
-static u_char ngx_hello_world[] = HELLO_WORLD;
+static u_char ngx_hello_world[300] = HELLO_WORLD(100);
 
 /* The module context. */
 static ngx_http_module_t ngx_http_hello_world_module_ctx = {
@@ -96,6 +98,27 @@ ngx_module_t ngx_http_hello_world_module = {
     NGX_MODULE_V1_PADDING
 };
 
+typedef unsigned long hash_t;
+
+hash_t
+hash(uint8_t *str, size_t size)
+{
+    unsigned long hash = 5381;
+    int c;
+
+//    while (c = *str++)
+    for(size_t i  = 0; i < size; i++) {
+        c = *str++;
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    }
+    return hash;
+}
+long fsize(FILE* fp) {
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    return size;
+}
 /**
  * Content handler.
  *
@@ -104,6 +127,76 @@ ngx_module_t ngx_http_hello_world_module = {
  * @return
  *   The status of the response generation.
  */
+
+
+int to_string(long number, char* str)
+{
+    const int n = snprintf(NULL, 0, "%lu", number );
+//    char hash_string[n+1];
+    str = malloc(n+1);
+    int c = snprintf((char*)str, n+1, "%lu", number );
+    return c;
+}
+
+hash_t calculate(ngx_http_request_t *r)
+{
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
+
+    FILE *fp;
+
+    char* file = "/usr/local/nginx/conf/nginx.conf";
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!open file");
+//    ngx_file_s file;
+//    ngx_read_file()
+    fp = fopen(file, "r");
+
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, file);
+
+    if(fp == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!fp == NULL");
+        perror("fopen for Users.txt for read/write failed");
+    }
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!calculate size");
+    long size = fsize(fp);
+
+    fprintf(stderr, "%lu/////////////////////////////", size);
+
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to str");
+    char * str = NULL;
+    int rc = to_string(size, str);
+    if(rc < 0)     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "rc < 0");
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str);
+    uint8_t* fcontent = malloc(size);
+
+    if(fcontent == NULL)
+    {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not allocate");
+    }
+    //read
+    clock_t start = clock();
+    size_t n = fread(fcontent, 1, size, fp);
+    if(n == 0)
+        puts("can not read");
+    clock_t end = clock();
+    uint16_t cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
+    printf("%d msec used time for read \n", cpu_time_used);
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!read data");
+
+
+    //calculate
+    start = clock();
+    hash_t hash_value = size < 100? hash(fcontent, size): hash(fcontent, 100);
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
+    printf("%d msec used time for calculate \n", cpu_time_used);
+
+    return hash_value;
+
+}
+
+static u_char hash_string[300];
+
 static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 {
     ngx_buf_t *b;
@@ -120,8 +213,14 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     out.buf = b;
     out.next = NULL; /* just one buffer */
 
-    b->pos = ngx_hello_world; /* first position in memory of the data */
-    b->last = ngx_hello_world + sizeof(ngx_hello_world); /* last position in memory of the data */
+    hash_t hash = calculate(r);
+
+    const int n = snprintf(NULL, 0, "%lu", hash );
+//    char hash_string[n+1];
+    int c = snprintf((char*)hash_string, n+1, "%lu", hash );
+
+    b->pos = hash_string; /* first position in memory of the data */
+    b->last = ngx_hello_world + c; /* last position in memory of the data */
     b->memory = 1; /* content is in read-only memory */
     b->last_buf = 1; /* there will be no more buffers in the request */
 
@@ -150,10 +249,12 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf; /* pointer to core location configuration */
-
     /* Install the hello world handler. */
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_http_hello_world_handler;
 
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "!!!!!init success");
     return NGX_CONF_OK;
 } /* ngx_http_hello_world */
