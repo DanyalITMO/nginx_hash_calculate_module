@@ -229,7 +229,7 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
 
     b->pos = hash_string; /* first position in memory of the data */
-    b->last = ngx_hello_world + sizeof(ngx_hello_world); /* last position in memory of the data */
+    b->last = hash_string + sizeof(hash_string); /* last position in memory of the data */
     b->memory = 1; /* content is in read-only memory */
     b->last_buf = 1; /* there will be no more buffers in the request */
 
