@@ -144,11 +144,12 @@ hash_t calculate(ngx_http_request_t *r)
 
     FILE *fp;
 
-    char* file = "/usr/local/nginx/conf/nginx.conf";
+    ///usr/local/man/man1/scapy.1
+    char* file = "/home/mugutdinov/Anaconda3-5.1.0-Linux-x86_64.sh";
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!open file");
 //    ngx_file_s file;
 //    ngx_read_file()
-    fp = fopen(file, "r");
+    fp = fopen(file, "rb");
 
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, file);
 
@@ -166,21 +167,24 @@ hash_t calculate(ngx_http_request_t *r)
     int rc = to_string(size, str);
     if(rc < 0)     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "rc < 0");
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str);
-    uint8_t* fcontent = malloc(size);
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str); // dont work
+    uint8_t* fcontent = ngx_pcalloc(r->pool, size);// malloc(size);
 
     if(fcontent == NULL)
     {
         ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not allocate");
+    } else
+    {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!CAN allocate");
     }
     //read
     clock_t start = clock();
     size_t n = fread(fcontent, 1, size, fp);
     if(n == 0)
-        puts("can not read");
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not read data");
     clock_t end = clock();
     uint16_t cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
-    printf("%d msec used time for read \n", cpu_time_used);
+    fprintf(stderr, "%d msec used time for read \n", cpu_time_used);
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!read data");
 
 
@@ -189,7 +193,7 @@ hash_t calculate(ngx_http_request_t *r)
     hash_t hash_value = size < 100? hash(fcontent, size): hash(fcontent, 100);
     end = clock();
     cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
-    printf("%d msec used time for calculate \n", cpu_time_used);
+    fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned)hash_value, cpu_time_used);
 
     return hash_value;
 
@@ -203,8 +207,8 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     ngx_chain_t out;
 
     /* Set the Content-Type header. */
-    r->headers_out.content_type.len = sizeof("text/html") - 1;
-    r->headers_out.content_type.data = (u_char *) "text/html";
+    r->headers_out.content_type.len = sizeof("text/plain") - 1;
+    r->headers_out.content_type.data = (u_char *) "text/plain";
 
     /* Allocate a new buffer for sending out the reply. */
     b = ngx_pcalloc(r->pool, sizeof(ngx_buf_t));
@@ -215,12 +219,17 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 
     hash_t hash = calculate(r);
 
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to char str");
+
     const int n = snprintf(NULL, 0, "%lu", hash );
 //    char hash_string[n+1];
     int c = snprintf((char*)hash_string, n+1, "%lu", hash );
+    fprintf(stderr, "c = %d \n", c);
+    fprintf(stderr, "2hash = %lu \n", (long unsigned)hash);
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
 
     b->pos = hash_string; /* first position in memory of the data */
-    b->last = ngx_hello_world + c; /* last position in memory of the data */
+    b->last = ngx_hello_world + sizeof(ngx_hello_world); /* last position in memory of the data */
     b->memory = 1; /* content is in read-only memory */
     b->last_buf = 1; /* there will be no more buffers in the request */
 
