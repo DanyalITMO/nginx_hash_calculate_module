@@ -140,24 +140,24 @@ int to_string(long number, char* str)
 
 hash_t calculate(ngx_http_request_t *r)
 {
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
 
     FILE *fp;
 
     ///usr/local/man/man1/scapy.1
     char* file = "/home/mugutdinov/Anaconda3-5.1.0-Linux-x86_64.sh";
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!open file");
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!open file");
 //    ngx_file_s file;
 //    ngx_read_file()
     fp = fopen(file, "rb");
 
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, file);
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, file);
 
     if(fp == NULL) {
         ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!fp == NULL");
-        perror("fopen for Users.txt for read/write failed");
+//        perror("fopen for Users.txt for read/write failed");
     }
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!calculate size");
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!calculate size");
     long size = fsize(fp);
 
     fprintf(stderr, "%lu/////////////////////////////", size);
@@ -166,7 +166,7 @@ hash_t calculate(ngx_http_request_t *r)
     char * str = NULL;
     int rc = to_string(size, str);
     if(rc < 0)     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "rc < 0");
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
 //    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str); // dont work
     uint8_t* fcontent = ngx_pcalloc(r->pool, size);// malloc(size);
 
@@ -206,6 +206,20 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     ngx_buf_t *b;
     ngx_chain_t out;
 
+    char buf[300];
+    ngx_str_set(&r->args, buf);
+
+    char buf_for_args[400];
+    strcpy(buf_for_args, (char*)r->args_start);
+    char * pch = strtok (buf_for_args,"=");
+    while (pch != NULL)                         // пока есть лексемы
+    {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, pch);
+        pch = strtok (NULL, "=");
+    }
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!! args");
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, buf);
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)r->args_start);
     /* Set the Content-Type header. */
     r->headers_out.content_type.len = sizeof("text/plain") - 1;
     r->headers_out.content_type.data = (u_char *) "text/plain";
@@ -219,14 +233,14 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 
     hash_t hash = calculate(r);
 
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to char str");
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to char str");
 
     const int n = snprintf(NULL, 0, "%lu", hash );
 //    char hash_string[n+1];
     int c = snprintf((char*)hash_string, n+1, "%lu", hash );
     fprintf(stderr, "c = %d \n", c);
-    fprintf(stderr, "2hash = %lu \n", (long unsigned)hash);
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
+//    fprintf(stderr, "2hash = %lu \n", (long unsigned)hash);
+//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
 
     b->pos = hash_string; /* first position in memory of the data */
     b->last = hash_string + sizeof(hash_string); /* last position in memory of the data */
