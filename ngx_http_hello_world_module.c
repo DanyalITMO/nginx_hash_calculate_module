@@ -26,31 +26,13 @@
  * THE SOFTWARE.
  *
  */
-#include <ngx_config.h>
-#include <ngx_core.h>
-#include <ngx_http.h>
-#define make_str( bar ) # bar
-#define HELLO_WORLD(x) "<!DOCTYPE html>                \
-<html>                          \
-<head>                          \
-<title> \
-Basic Web Page</title>                           \
-</head>                         \
-<body>"                          \
-        make_str(x) \
-                            \
-"</body>                         \
-</html>"
 
-//#define HELLO_WORLD  "hello world"
+#include "utils.h"
+
 
 static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r);
 
-/**
- * This module provided directive: hello world.
- *
- */
 static ngx_command_t ngx_http_hello_world_commands[] = {
 
     { ngx_string("hello_world"), /* directive */
@@ -64,24 +46,47 @@ static ngx_command_t ngx_http_hello_world_commands[] = {
     ngx_null_command /* command termination */
 };
 
-/* The hello world string. */
-static u_char ngx_hello_world[300] = HELLO_WORLD(100);
+struct mempool pool;
 
 /* The module context. */
 static ngx_http_module_t ngx_http_hello_world_module_ctx = {
-    NULL, /* preconfiguration */
-    NULL, /* postconfiguration */
+        NULL, /* preconfiguration */
+        NULL, /* postconfiguration */
 
-    NULL, /* create main configuration */
-    NULL, /* init main configuration */
+        NULL, /* create main configuration */
+        NULL, /* init main configuration */
 
-    NULL, /* create server configuration */
-    NULL, /* merge server configuration */
+        NULL, /* create server configuration */
+        NULL, /* merge server configuration */
 
-    NULL, /* create location configuration */
-    NULL /* merge location configuration */
+        NULL, /* create location configuration */
+        NULL /* merge location configuration */
 };
 
+
+ngx_int_t init_module(ngx_cycle_t *cycle)
+{
+    pool.size = 5000;
+    pool.p = (u_char*) malloc(pool.size);
+    fprintf(stderr, "*******************INIT MODULE\n");
+    return 0;
+}
+
+
+void exit_master(ngx_cycle_t *cycle)
+{
+    fprintf(stderr, "*******************EXIT MASTER\n");
+}
+
+
+/*
+ * Configuration directive handlers are called as they appear in configuration files in the context of the master process.
+After the configuration is parsed successfully, init_module handler is called in the context of the master process. The init_module handler is called in the master process each time a configuration is loaded.
+The master process creates one or more worker processes and the init_process handler is called in each of them.
+When a worker process receives the shutdown or terminate command from the master, it invokes the exit_process handler.
+The master process calls the exit_master handler before exiting.
+Because threads are used in nginx only as a supplementary I/O facility with its own API, init_thread and exit_thread handlers are not currently called. There is also no init_master handler, because it would be unnecessary overhead.
+ * */
 /* Module definition. */
 ngx_module_t ngx_http_hello_world_module = {
     NGX_MODULE_V1,
@@ -89,115 +94,16 @@ ngx_module_t ngx_http_hello_world_module = {
     ngx_http_hello_world_commands, /* module directives */
     NGX_HTTP_MODULE, /* module type */
     NULL, /* init master */
-    NULL, /* init module */
+    init_module, /* init module */
     NULL, /* init process */
     NULL, /* init thread */
     NULL, /* exit thread */
     NULL, /* exit process */
-    NULL, /* exit master */
+    exit_master, /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
-typedef unsigned long hash_t;
 
-hash_t
-hash(uint8_t *str, size_t size)
-{
-    unsigned long hash = 5381;
-    int c;
-
-//    while (c = *str++)
-    for(size_t i  = 0; i < size; i++) {
-        c = *str++;
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-    return hash;
-}
-long fsize(FILE* fp) {
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    return size;
-}
-/**
- * Content handler.
- *
- * @param r
- *   Pointer to the request structure. See http_request.h.
- * @return
- *   The status of the response generation.
- */
-
-
-int to_string(long number, char* str)
-{
-    const int n = snprintf(NULL, 0, "%lu", number );
-//    char hash_string[n+1];
-    str = malloc(n+1);
-    int c = snprintf((char*)str, n+1, "%lu", number );
-    return c;
-}
-
-hash_t calculate(ngx_http_request_t *r)
-{
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
-
-    FILE *fp;
-
-    ///usr/local/man/man1/scapy.1
-    char* file = "/home/mugutdinov/Anaconda3-5.1.0-Linux-x86_64.sh";
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!open file");
-//    ngx_file_s file;
-//    ngx_read_file()
-    fp = fopen(file, "rb");
-
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, file);
-
-    if(fp == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!fp == NULL");
-//        perror("fopen for Users.txt for read/write failed");
-    }
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!calculate size");
-    long size = fsize(fp);
-
-    fprintf(stderr, "%lu/////////////////////////////", size);
-
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to str");
-    char * str = NULL;
-    int rc = to_string(size, str);
-    if(rc < 0)     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "rc < 0");
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str); // dont work
-    uint8_t* fcontent = ngx_pcalloc(r->pool, size);// malloc(size);
-
-    if(fcontent == NULL)
-    {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not allocate");
-    } else
-    {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!CAN allocate");
-    }
-    //read
-    clock_t start = clock();
-    size_t n = fread(fcontent, 1, size, fp);
-    if(n == 0)
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not read data");
-    clock_t end = clock();
-    uint16_t cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
-    fprintf(stderr, "%d msec used time for read \n", cpu_time_used);
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!read data");
-
-
-    //calculate
-    start = clock();
-    hash_t hash_value = size < 100? hash(fcontent, size): hash(fcontent, 100);
-    end = clock();
-    cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
-    fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned)hash_value, cpu_time_used);
-
-    return hash_value;
-
-}
 
 static u_char hash_string[300];
 
@@ -206,20 +112,7 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     ngx_buf_t *b;
     ngx_chain_t out;
 
-    char buf[300];
-    ngx_str_set(&r->args, buf);
 
-    char buf_for_args[400];
-    strcpy(buf_for_args, (char*)r->args_start);
-    char * pch = strtok (buf_for_args,"=");
-    while (pch != NULL)                         // пока есть лексемы
-    {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, pch);
-        pch = strtok (NULL, "=");
-    }
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!! args");
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, buf);
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)r->args_start);
     /* Set the Content-Type header. */
     r->headers_out.content_type.len = sizeof("text/plain") - 1;
     r->headers_out.content_type.data = (u_char *) "text/plain";
@@ -250,7 +143,7 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     /* Sending the headers for the reply. */
     r->headers_out.status = NGX_HTTP_OK; /* 200 status code */
     /* Get the content length of the body. */
-    r->headers_out.content_length_n = sizeof(ngx_hello_world);
+    r->headers_out.content_length_n = sizeof(hash_string);
     ngx_http_send_header(r); /* Send the headers */
 
     /* Send the body, and return the status code of the output filter chain. */
