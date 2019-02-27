@@ -3,10 +3,14 @@
 //
 
 #include "utils.h"
+#include "logger.h"
+
+//static char str[200];// = NULL;
 
 hash_t calculate(ngx_http_request_t *r)
 {
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
+    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
+
 
     FILE *fp;
 
@@ -27,28 +31,24 @@ hash_t calculate(ngx_http_request_t *r)
     }
     long size = fsize(fp);
 
-    fprintf(stderr, "%lu !!!!!SIZE file =", size);
+    fprintf(stderr, "!!!!!SIZE file =%lu %s", size, "!!!");
+    fprintf(stderr, "!!!!!POOL SIZE file =%lu %s", pool.size, "!!!");
 
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to str");
-    char * str = NULL;
-    int rc = to_string(size, str);
-    if(rc < 0)     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "rc < 0");
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!SIZE");
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, str); // dont work
-    uint8_t* fcontent = ngx_pcalloc(r->pool, size);// malloc(size);
-
-    if(fcontent == NULL)
-    {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not allocate");
-    } else
-    {
-        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!CAN allocate");
-    }
-    //read
     clock_t start = clock();
-    size_t n = fread(fcontent, 1, size, fp);
-    if(n == 0)
+    if((size_t)size > pool.size)
+    {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!have not need memory");
+        return 0;
+    }
+
+    size_t n = fread(pool.p, 1, size, fp);
+    if(n == 0) {
         ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!can not read data");
+        return 0;
+    }
+
+    pool.last += n;
+
     clock_t end = clock();
     uint16_t cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "%d msec used time for read \n", cpu_time_used);
@@ -57,7 +57,7 @@ hash_t calculate(ngx_http_request_t *r)
 
     //calculate
     start = clock();
-    hash_t hash_value = size < 100? hash(fcontent, size): hash(fcontent, 100);
+    hash_t hash_value = size < 100? hash(pool.p, size): hash(pool.p, 100);
     end = clock();
     cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned)hash_value, cpu_time_used);

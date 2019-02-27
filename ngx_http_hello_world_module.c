@@ -28,6 +28,7 @@
  */
 
 #include "utils.h"
+#include "logger.h"
 
 
 static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -63,10 +64,11 @@ static ngx_http_module_t ngx_http_hello_world_module_ctx = {
         NULL /* merge location configuration */
 };
 
-
 ngx_int_t init_module(ngx_cycle_t *cycle)
 {
-    pool.size = 5000;
+    init_logger();
+
+    pool.size = 15000;
     pool.p = (u_char*) malloc(pool.size);
     fprintf(stderr, "*******************INIT MODULE\n");
     return 0;
@@ -103,15 +105,12 @@ ngx_module_t ngx_http_hello_world_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
-
 static u_char hash_string[300];
 
 static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 {
     ngx_buf_t *b;
     ngx_chain_t out;
-
 
     /* Set the Content-Type header. */
     r->headers_out.content_type.len = sizeof("text/plain") - 1;
@@ -126,24 +125,20 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 
     hash_t hash = calculate(r);
 
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!convert to char str");
-
     const int n = snprintf(NULL, 0, "%lu", hash );
-//    char hash_string[n+1];
     int c = snprintf((char*)hash_string, n+1, "%lu", hash );
     fprintf(stderr, "c = %d \n", c);
-//    fprintf(stderr, "2hash = %lu \n", (long unsigned)hash);
 //    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
 
     b->pos = hash_string; /* first position in memory of the data */
-    b->last = hash_string + sizeof(hash_string); /* last position in memory of the data */
+    b->last = hash_string + c /*sizeof(hash_string)*/; /* last position in memory of the data */
     b->memory = 1; /* content is in read-only memory */
     b->last_buf = 1; /* there will be no more buffers in the request */
 
     /* Sending the headers for the reply. */
     r->headers_out.status = NGX_HTTP_OK; /* 200 status code */
     /* Get the content length of the body. */
-    r->headers_out.content_length_n = sizeof(hash_string);
+    r->headers_out.content_length_n = c;//sizeof(hash_string);
     ngx_http_send_header(r); /* Send the headers */
 
     /* Send the body, and return the status code of the output filter chain. */
