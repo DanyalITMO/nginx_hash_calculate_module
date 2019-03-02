@@ -29,10 +29,12 @@
 
 #include "utils.h"
 #include "logger.h"
+#include "list/list.h"
 
 
 static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r);
+
 
 static ngx_command_t ngx_http_hello_world_commands[] = {
 
@@ -68,6 +70,7 @@ ngx_int_t init_module(ngx_cycle_t *cycle)
 {
     init_logger();
 
+    list = list_new();
     pool.size = 15000;
     pool.p = (u_char*) malloc(pool.size);
     fprintf(stderr, "*******************INIT MODULE\n");

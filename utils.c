@@ -6,23 +6,48 @@
 #include "logger.h"
 
 //static char str[200];// = NULL;
+list_t *list;
+list_node_t* find(list_t* list, const char* file)
+{
+    list_node_t *node = NULL;
+    list_iterator_t *it = list_iterator_new(list, LIST_HEAD);
+    while ((node = list_iterator_next(it))) {
+        if(strcmp(node->file, file) == 0)
+            return node;
+    }
+    return NULL;
+}
+
+char* getPath(u_char* args, char* buf)
+{
+    strcpy(buf, (char*)args);
+
+    char * file = strtok (buf,"=");//skip first ("path" word)
+    file = strtok (NULL, "= ");
+    return file;
+}
 
 hash_t calculate(ngx_http_request_t *r)
 {
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
-
-
-    FILE *fp;
 
     ///usr/local/man/man1/scapy.1
 
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!! args\n");
 
     char buf_for_args[400];
-    strcpy(buf_for_args, (char*)r->args_start);
+    char* file = getPath(r->args_start, buf_for_args);
+    list_node_t *node = find(list, file);
 
-    char * file = strtok (buf_for_args,"=");//skip first ("path" word)
-    file = strtok (NULL, "= ");
+    if(node != NULL)
+    {
+        fprintf(stderr, "######hit the cache\n");
+        fprintf(stderr, "size = %lu, hash = %lu, filename = %s\n",node->size, node->hash, node->file);
+        return node->hash;
+    }
+    fprintf(stderr, "######cache miss\n");
+
+    FILE *fp;
     fp = fopen(file, "rb");
 
     if(fp == NULL) {
@@ -61,6 +86,11 @@ hash_t calculate(ngx_http_request_t *r)
     end = clock();
     cpu_time_used = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned)hash_value, cpu_time_used);
+
+
+    list_node_t *a = list_node_new(size, hash_value, file);
+    list_rpush(list, a);
+
 
     return hash_value;
 
