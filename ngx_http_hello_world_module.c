@@ -71,8 +71,14 @@ ngx_int_t init_module(ngx_cycle_t *cycle)
     init_logger();
 
     list = list_new();
-    pool.size = 15000;
+    pool.size = 10000000000;
     pool.p = (u_char*) malloc(pool.size);
+    if(pool.p == NULL)
+    {
+        fprintf(stderr, "*******************can not allocate memory\n");
+        return 1;
+    }
+
     fprintf(stderr, "*******************INIT MODULE\n");
     return 0;
 }
