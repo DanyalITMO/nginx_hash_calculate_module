@@ -8,7 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include "list/list.h"
+#include "../list/list.h"
 
 struct mempool
 {
@@ -33,7 +33,7 @@ inline long fsize(FILE* fp) {
 int to_string(long number, char* str);
 
 
-hash_t calculate(ngx_http_request_t *r);
+int getProcessTime(ngx_http_request_t *r);
 
 extern struct mempool pool;
 extern list_t *list;

@@ -34,4 +34,4 @@ get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTO
 foreach(dir ${dirs})
     message(STATUS "dir='${dir}'")
 endforeach()
-add_library(nginx_module ngx_http_hello_world_module.c)
+add_library(nginx_module source/ngx_http_hash_calculator_module.c)

@@ -1,5 +1,5 @@
 /**
- * @file   ngx_http_hello_world_module.c
+ * @file   ngx_http_hash_calculator_module.c
  * @author António P. P. Almeida <appa@perusio.net>
  * @date   Wed Aug 17 12:06:52 2011
  *
@@ -27,21 +27,20 @@
  *
  */
 
-#include "utils.h"
-#include "logger.h"
-#include "list/list.h"
+#include "../include/utils.h"
+#include "../list/list.h"
 
 
-static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r);
+static char *ngx_http_hash_calculator(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static ngx_int_t ngx_http_hash_calculator_handler(ngx_http_request_t *r);
+static void* ngx_http_hello_create_loc_conf(ngx_conf_t *cf);
 
+static ngx_command_t ngx_http_hash_calculator_commands[] = {
 
-static ngx_command_t ngx_http_hello_world_commands[] = {
-
-    { ngx_string("hello_world"), /* directive */
-      NGX_HTTP_LOC_CONF|NGX_CONF_NOARGS, /* location context and takes
+    { ngx_string("hash_calculator"), /* directive */
+      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1, /* location context and takes
                                             no arguments*/
-      ngx_http_hello_world, /* configuration setup function */
+      ngx_http_hash_calculator, /* configuration setup function */
       0, /* No offset. Only one context is supported. */
       0, /* No offset when storing the module configuration on struct. */
       NULL},
@@ -49,10 +48,11 @@ static ngx_command_t ngx_http_hello_world_commands[] = {
     ngx_null_command /* command termination */
 };
 
+
 struct mempool pool;
 
 /* The module context. */
-static ngx_http_module_t ngx_http_hello_world_module_ctx = {
+static ngx_http_module_t ngx_http_hash_calculator_module_ctx = {
         NULL, /* preconfiguration */
         NULL, /* postconfiguration */
 
@@ -62,22 +62,13 @@ static ngx_http_module_t ngx_http_hello_world_module_ctx = {
         NULL, /* create server configuration */
         NULL, /* merge server configuration */
 
-        NULL, /* create location configuration */
-        NULL /* merge location configuration */
+        ngx_http_hello_create_loc_conf, /* create location configuration */
+        NULL /* merge location configurati  on */
 };
 
 ngx_int_t init_module(ngx_cycle_t *cycle)
 {
-    init_logger();
-
     list = list_new();
-    pool.size = 10000000000;
-    pool.p = (u_char*) malloc(pool.size);
-    if(pool.p == NULL)
-    {
-        fprintf(stderr, "*******************can not allocate memory\n");
-        return 1;
-    }
 
     fprintf(stderr, "*******************INIT MODULE\n");
     return 0;
@@ -86,6 +77,7 @@ ngx_int_t init_module(ngx_cycle_t *cycle)
 
 void exit_master(ngx_cycle_t *cycle)
 {
+    free(pool.p);
     fprintf(stderr, "*******************EXIT MASTER\n");
 }
 
@@ -99,10 +91,10 @@ The master process calls the exit_master handler before exiting.
 Because threads are used in nginx only as a supplementary I/O facility with its own API, init_thread and exit_thread handlers are not currently called. There is also no init_master handler, because it would be unnecessary overhead.
  * */
 /* Module definition. */
-ngx_module_t ngx_http_hello_world_module = {
+ngx_module_t ngx_http_hash_calculator_module = {
     NGX_MODULE_V1,
-    &ngx_http_hello_world_module_ctx, /* module context */
-    ngx_http_hello_world_commands, /* module directives */
+    &ngx_http_hash_calculator_module_ctx, /* module context */
+    ngx_http_hash_calculator_commands, /* module directives */
     NGX_HTTP_MODULE, /* module type */
     NULL, /* init master */
     init_module, /* init module */
@@ -116,7 +108,7 @@ ngx_module_t ngx_http_hello_world_module = {
 
 static u_char hash_string[300];
 
-static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
+static ngx_int_t ngx_http_hash_calculator_handler(ngx_http_request_t *r)
 {
     ngx_buf_t *b;
     ngx_chain_t out;
@@ -132,11 +124,11 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
     out.buf = b;
     out.next = NULL; /* just one buffer */
 
-    hash_t hash = calculate(r);
+    int process_time = getProcessTime(r);
 
-    const int n = snprintf(NULL, 0, "%lu", hash );
-    int c = snprintf((char*)hash_string, n+1, "%lu", hash );
-    fprintf(stderr, "c = %d \n", c);
+    const int n = snprintf(NULL, 0, "%d", process_time );
+    int c = snprintf((char*)hash_string, n+1, "%d", process_time );
+//    fprintf(stderr, "c = %d \n", c);
 //    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, (char*)&hash_string);
 
     b->pos = hash_string; /* first position in memory of the data */
@@ -152,7 +144,7 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
 
     /* Send the body, and return the status code of the output filter chain. */
     return ngx_http_output_filter(r, &out);
-} /* ngx_http_hello_world_handler */
+} /* ngx_http_hash_calculator_handler */
 
 /**
  * Configuration setup function that installs the content handler.
@@ -166,15 +158,48 @@ static ngx_int_t ngx_http_hello_world_handler(ngx_http_request_t *r)
  * @return string
  *   Status of the configuration setup.
  */
-static char *ngx_http_hello_world(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *ngx_http_hash_calculator(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf; /* pointer to core location configuration */
     /* Install the hello world handler. */
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    clcf->handler = ngx_http_hello_world_handler;
+    clcf->handler = ngx_http_hash_calculator_handler;
+
+    ngx_str_t  *value = cf->args->elts;
+
+    /*
+    fprintf(stderr, "args size: %lu\n", cf->args->size); // cf->args->size always 16
+    for(size_t i = 0; i < cf->args->size; i++)
+        fprintf(stderr, "%s\n", value[i].data);
+*/
+
+
+    long memory_size = strtol((char*)value[1].data, NULL, 10);
+    fprintf(stderr, "Size from conf: %ld\n", memory_size);
+
+    pool.size = memory_size;
+    pool.p = (u_char*) malloc(pool.size);
+    if(pool.p == NULL)
+    {
+        fprintf(stderr, "*******************can not allocate memory\n");
+        return NGX_CONF_ERROR;
+    }
 
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                        "!!!!!init success");
     return NGX_CONF_OK;
-} /* ngx_http_hello_world */
+} /* ngx_http_hash_calculator */
+
+static void *
+ngx_http_hello_create_loc_conf(ngx_conf_t *cf)
+{
+    size_t* size;
+
+    size = ngx_pcalloc(cf->pool, sizeof(size));
+    if (size == NULL) {
+        return NGX_CONF_ERROR;
+    }
+    *size =  1000000000;
+    return size;
+}

@@ -24,14 +24,14 @@ document his journey on Nginx module development.
        
    2. Build Nginx as usual with `make`.
    
-   3. Configure the module. There's only one directive `hello_world`
+   3. Configure the module. There's only one directive `hash_calculator`
       that is supported in the **location** context only.
       
       Example:
           
           location = /test {
              
-             hello_world;
+             hash_calculator;
           
           }
 
@@ -52,7 +52,7 @@ document his journey on Nginx module development.
       
 ## TODO
 
- 1. Add an argument to the `hello_world` directive specifying the
+ 1. Add an argument to the `hash_calculator` directive specifying the
     language. For example:
     
     * en: hello world
@@ -63,7 +63,7 @@ document his journey on Nginx module development.
  
     * es: hola mundo
  
- 2. Make the `hello_world` directive be also defined in the **if in
+ 2. Make the `hash_calculator` directive be also defined in the **if in
     location** context (`NGX_HTTP_LIF_CONF`) in
     `ngx_http_config.h`. Which implies defining a **merge
     configuration** function.
