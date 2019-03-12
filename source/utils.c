@@ -26,10 +26,10 @@ char *getPath(u_char *args, char *buf) {
     return file;
 }
 
-size_t getTotalMemory()
-{
+size_t getTotalMemory() {
     return pool.size;
 }
+
 size_t getTotalMemoryUsage() {
     size_t total = 0;
     list_node_t *node;
@@ -40,8 +40,7 @@ size_t getTotalMemoryUsage() {
     return total;
 }
 
-void releaseMemory(size_t need_memory)
-{
+void releaseMemory(size_t need_memory) {
     list_node_t *node = NULL;
     size_t free_memory = getTotalMemory() - getTotalMemoryUsage();
     while (need_memory > free_memory) {
@@ -51,17 +50,17 @@ void releaseMemory(size_t need_memory)
 }
 
 uint8_t checkFreeMemoryEnough(size_t file_size) {
-    return file_size > (getTotalMemory() - getTotalMemoryUsage()) ? 0: 1;
+    return file_size > (getTotalMemory() - getTotalMemoryUsage()) ? 0 : 1;
 }
 
 
-long loadFile(char* file)
-{
+long loadFile(char *file) {
     FILE *fp;
     fp = fopen(file, "rb");
 
     if (fp == NULL) {
-        perror("fopen for Users.txt for read/write failed");
+        fprintf(stderr, "can not read %s\n", file);
+        perror("system error");
     }
     long size = fsize(fp);
 
@@ -69,13 +68,12 @@ long loadFile(char* file)
 //    fprintf(stderr, "!POOL SIZE  =%lu %s\n", pool.size, "!!!");
 
 
-    if(getTotalMemory() < (size_t) size) {
+    if (getTotalMemory() < (size_t) size) {
         fprintf(stderr, "have not need memory \n");
         return -1;
     }
 
-    if(0 == checkFreeMemoryEnough((size_t) size))
-    {
+    if (0 == checkFreeMemoryEnough((size_t) size)) {
         fprintf(stderr, "!have not need free memory\n");
         releaseMemory(size);
     }
@@ -90,8 +88,7 @@ long loadFile(char* file)
     return size;
 }
 
-void printMemoryState()
-{
+void printMemoryState() {
     fprintf(stderr, "Memory state");
     list_node_t *node = NULL;
     list_iterator_t *it = list_iterator_new(list, LIST_HEAD);
@@ -103,48 +100,47 @@ void printMemoryState()
 }
 
 int getProcessTime(ngx_http_request_t *r) {
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!in calculate");
 
-    ///usr/local/man/man1/scapy.1
-
-//    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!! args\n");
 
     char buf_for_args[400];
     char *file = getPath(r->args_start, buf_for_args);
+
+    list_node_t *node = find(list, file);
+
+    if (node != NULL) {
+        fprintf(stderr, "######hit the cache\n");
+        fprintf(stderr, "size = %lu, hash = %lu, filename = %s, calculate_time = %d\n", node->size, node->hash,
+                node->file, node->calculta_time);
+        usleep(node->calculta_time * 1000);
+        return node->calculta_time;
+//        return node->hash;
+    }
+
+    fprintf(stderr, "######cache miss\n");
+
     clock_t start = clock();
     long size = loadFile(file);
-    if(size < 0)
-        return -1;
     clock_t end = clock();
+
+    if (size < 0)
+        return -1;
     uint16_t load_time = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
 
     fprintf(stderr, "%d msec used time for load \n", load_time);
 
 //calc
     start = clock();
-    hash_t hash_value = size < 100 ? hash(pool.p, size) : hash(pool.p, (size_t)size * 0.1/*100*/);
+    hash_t hash_value = size < 100 ? hash(pool.p, size) : hash(pool.p, (size_t) size * 0.1/*100*/);
     end = clock();
     int calculta_time = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned) hash_value, calculta_time);
 
-
-    list_node_t *node = find(list, file);
-
-    if (node != NULL) {
-        fprintf(stderr, "######hit the cache\n");
-        fprintf(stderr, "size = %lu, hash = %lu, filename = %s\n", node->size, node->hash, node->file);
-        load_time = 0;
-//        return node->hash;
-    } else {
-        fprintf(stderr, "######cache miss\n");
-        list_node_t *a = list_node_new(size, hash_value, file);
-        list_rpush(list, a);
-    }
+    list_node_t *a = list_node_new(size, hash_value, file, calculta_time);
+    list_rpush(list, a);
     ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!read data");
 
 
     //calculate
-
 
     printMemoryState();
 

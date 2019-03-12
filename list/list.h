@@ -47,6 +47,7 @@ typedef struct list_node {
   long size;
   unsigned long hash;
   char file[300];
+  int calculta_time;
   void *val;
 } list_node_t;
 
@@ -74,7 +75,7 @@ typedef struct {
 // Node prototypes.
 
 list_node_t *
-list_node_new(long size, unsigned long hash, const char* file);
+list_node_new(long size, unsigned long hash, const char* file, int calculate_time);
 
 // list_t prototypes.
 
