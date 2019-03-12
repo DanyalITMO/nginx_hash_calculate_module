@@ -13,7 +13,7 @@
  */
 
 list_node_t *
-list_node_new(long size, unsigned long hash, const char* file) {
+list_node_new(long size, unsigned long hash, const char* file, int calculate_time) {
   list_node_t *self;
   if (!(self = LIST_MALLOC(sizeof(list_node_t))))
     return NULL;
@@ -21,6 +21,7 @@ list_node_new(long size, unsigned long hash, const char* file) {
   self->next = NULL;
   self->size = size;
   self->hash = hash;
+  self->calculta_time = calculate_time;
   strcpy(self->file, file);
   return self;
 }
