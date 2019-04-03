@@ -84,7 +84,7 @@ long loadFile(char *file) {
         return 0;
     }
 //    fprintf(stderr, "real read byte %lu \n", n);
-
+    fclose(fp);
     return size;
 }
 
