@@ -128,9 +128,10 @@ int getProcessTime(ngx_http_request_t *r) {
 
     fprintf(stderr, "%d msec used time for load \n", load_time);
 
-//calc
+//calc//добавить более продуманную версию длительности подсчета
     start = clock();
-    hash_t hash_value = size < 100 ? hash(pool.p, size) : hash(pool.p, (size_t) size * 0.1/*100*/);
+//    hash_t hash_value = size < 100 ? hash(pool.p, size) : hash(pool.p, (size_t) size * 0.1/*100*/);
+    hash_t hash_value = hash(pool.p, (size_t) size * 0.04);//примерно 10 процентов получается
     end = clock();
     int calculta_time = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned) hash_value, calculta_time);
