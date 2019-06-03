@@ -128,20 +128,14 @@ int getProcessTime(ngx_http_request_t *r) {
 
     fprintf(stderr, "%d msec used time for load \n", load_time);
 
-//calc//добавить более продуманную версию длительности подсчета
     start = clock();
-//    hash_t hash_value = size < 100 ? hash(pool.p, size) : hash(pool.p, (size_t) size * 0.1/*100*/);
-    hash_t hash_value = hash(pool.p, (size_t) size * 0.04);//примерно 10 процентов получается
+    hash_t hash_value = hash(pool.p, (size_t) size * 0.04);
     end = clock();
     int calculta_time = ((double) (end - start)) / (CLOCKS_PER_SEC / 1000);
     fprintf(stderr, "hash = %lu , %d msec used time for calculate \n", (long unsigned) hash_value, calculta_time);
 
     list_node_t *a = list_node_new(size, hash_value, file, calculta_time);
     list_rpush(list, a);
-    ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0, "!!!!!!!!!!!read data");
-
-
-    //calculate
 
     printMemoryState();
 
@@ -154,17 +148,15 @@ hash(uint8_t *str, size_t size) {
     unsigned long hash = 5381;
     int c;
 
-//    while (c = *str++)
     for (size_t i = 0; i < size; i++) {
         c = *str++;
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+        hash = ((hash << 5) + hash) + c;
     }
     return hash;
 }
 
 int to_string(long number, char *str) {
     const int n = snprintf(NULL, 0, "%lu", number);
-//    char hash_string[n+1];
     str = malloc(n + 1);
     int c = snprintf((char *) str, n + 1, "%lu", number);
     return c;
